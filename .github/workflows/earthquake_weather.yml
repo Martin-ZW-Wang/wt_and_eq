@@ -1,10 +1,13 @@
 name: Earthquake and Taipei Weather Discord Notify
 
 on:
+  push:
+    branches:
+      - main
+
   workflow_dispatch:
 
   schedule:
-  
     - cron: "*/5 * * * *"
 
 concurrency:
