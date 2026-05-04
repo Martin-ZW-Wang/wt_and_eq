@@ -8,13 +8,10 @@ on:
 
   workflow_dispatch:
 
-  schedule:
-    - cron: "*/5 * * * *"
-
 jobs:
   notify:
     runs-on: ubuntu-latest
-    timeout-minutes: 6
+    timeout-minutes: 10
 
     steps:
       - name: Checkout repository
@@ -39,7 +36,7 @@ jobs:
 
       - name: Run Python script
         env:
-          LOOP_COUNT: 28
+          PYTHONUNBUFFERED: "1"
         run: |
           if [ -f "earthquake_notify.py" ]; then
             echo "找到根目錄 earthquake_notify.py"
