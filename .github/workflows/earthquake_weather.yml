@@ -4,15 +4,12 @@ on:
   push:
     branches:
       - main
+      - master
 
   workflow_dispatch:
 
   schedule:
     - cron: "*/5 * * * *"
-
-concurrency:
-  group: earthquake-weather-notify
-  cancel-in-progress: true
 
 jobs:
   notify:
@@ -23,17 +20,35 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Show files
+        run: |
+          echo "目前專案根目錄："
+          ls -la
+          echo "目前 workflows 資料夾："
+          ls -la .github/workflows || true
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: Install dependencies
-        run: pip install -r requirements.txt
+      - name: Install Python package
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
 
-      - name: Run earthquake and weather notifier
+      - name: Run Python script
         env:
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-          CWA_AUTHORIZATION: ${{ secrets.CWA_AUTHORIZATION }}
           LOOP_COUNT: 28
-        run: python earthquake_weather_discord.py
+        run: |
+          if [ -f "earthquake_notify.py" ]; then
+            echo "找到根目錄 earthquake_notify.py"
+            python earthquake_notify.py
+          elif [ -f ".github/workflows/earthquake_notify.py" ]; then
+            echo "找到 .github/workflows/earthquake_notify.py"
+            python .github/workflows/earthquake_notify.py
+          else
+            echo "找不到 earthquake_notify.py"
+            echo "請確認檔案名稱是不是 earthquake_notify.py"
+            exit 1
+          fi
