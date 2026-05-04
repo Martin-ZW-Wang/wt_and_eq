@@ -1,0 +1,36 @@
+name: Earthquake and Taipei Weather Discord Notify
+
+on:
+  workflow_dispatch:
+
+  schedule:
+  
+    - cron: "*/5 * * * *"
+
+concurrency:
+  group: earthquake-weather-notify
+  cancel-in-progress: true
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run earthquake and weather notifier
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          CWA_AUTHORIZATION: ${{ secrets.CWA_AUTHORIZATION }}
+          LOOP_COUNT: 28
+        run: python earthquake_weather_discord.py
