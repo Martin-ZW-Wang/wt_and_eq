@@ -5,16 +5,9 @@ from zoneinfo import ZoneInfo
 # ============================================================
 # 基本設定
 # ============================================================
-# Discord Webhook URL
-DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/你的Webhook"
-
-# 中央氣象署 CWA API 授權碼
-CWA_AUTHORIZATION = "CWA-E12D1A67-816F-4FE6-B7C4-E934686B0D38"
-
-# 臺北市未來 1 週鄉鎮天氣預報 API
+DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL", "")
+CWA_AUTHORIZATION = os.getenv("CWA_AUTHORIZATION", "")
 CWA_TAIPEI_API_URL = "https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-D0047-063"
-
-# USGS 地震 API
 USGS_API_URL = "https://earthquake.usgs.gov/fdsnws/event/1/query"
 
 TAIWAN_LATITUDE = 23.6978
