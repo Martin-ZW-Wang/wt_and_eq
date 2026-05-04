@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo
 # 基本設定
 # ============================================================
 # Discord Webhook URL
-DISCORD_WEBHOOK_URL = "請填入你的 Discord Webhook URL"
+DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/你的Webhook"
 
 # 中央氣象署 CWA API 授權碼
 CWA_AUTHORIZATION = "CWA-E12D1A67-816F-4FE6-B7C4-E934686B0D38"
