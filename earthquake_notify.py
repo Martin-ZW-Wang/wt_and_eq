@@ -7,24 +7,31 @@ from zoneinfo import ZoneInfo
 # ============================================================
 # Discord Webhook URL
 DISCORD_WEBHOOK_URL = "請填入你的 Discord Webhook URL"
+
 # 中央氣象署 CWA API 授權碼
 CWA_AUTHORIZATION = "CWA-E12D1A67-816F-4FE6-B7C4-E934686B0D38"
+
 # 臺北市未來 1 週鄉鎮天氣預報 API
 CWA_TAIPEI_API_URL = "https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-D0047-063"
+
 # USGS 地震 API
 USGS_API_URL = "https://earthquake.usgs.gov/fdsnws/event/1/query"
-# 台灣中心座標
+
 TAIWAN_LATITUDE = 23.6978
 TAIWAN_LONGITUDE = 120.9605
-# 查詢台灣附近幾公里內的地震
+
 SEARCH_RADIUS_KM = 500
-# 查詢最近幾分鐘內的地震
+
 EARTHQUAKE_LOOKBACK_MINUTES = 10
-# 每 30 秒查詢下一個行政區
-CHECK_INTERVAL_SECONDS = 30
-# 台灣時區
+
+DISTRICT_INTERVAL_SECONDS = 5
+
+CYCLE_INTERVAL_SECONDS = 30
+
+MAX_CYCLES = 10000000000000
+
 TAIWAN_TZ = ZoneInfo("Asia/Taipei")
-# 台北市 12 個行政區，會依序輪巡
+
 TAIPEI_DISTRICTS = [
     "中正區",
     "大同區",
@@ -200,7 +207,7 @@ def format_earthquake_event(event: dict) -> str:
         f"詳細資料：{detail_url}"
     )
 def format_earthquake_message() -> str:
-
+    
     try:
         earthquakes = fetch_earthquakes()
 
@@ -217,7 +224,6 @@ def format_earthquake_message() -> str:
             f"台灣附近 {SEARCH_RADIUS_KM} 公里內查詢到 {len(earthquakes)} 筆地震。\n"
         ]
 
-        # 避免 Discord 訊息太長，最多顯示前 3 筆
         for index, event in enumerate(earthquakes[:3], start=1):
             lines.append(f"--- 第 {index} 筆 ---")
             lines.append(format_earthquake_event(event))
@@ -235,17 +241,23 @@ def format_earthquake_message() -> str:
 # ============================================================
 # 整合訊息
 # ============================================================
-def build_status_message(district: str, index: int, total: int) -> str:
-
+def build_status_message(
+    district: str,
+    district_index: int,
+    district_total: int,
+    cycle_index: int,
+    cycle_total: int,
+    earthquake_text: str
+) -> str:
+    
     now_text = datetime.now(TAIWAN_TZ).strftime("%Y-%m-%d %H:%M:%S")
-
-    earthquake_text = format_earthquake_message()
     weather_text = format_weather_message(district)
 
     message = (
         f"📢 **地震與台北天氣自動通知**\n"
         f"更新時間：{now_text}（台灣時間）\n"
-        f"目前輪巡：第 {index} / {total} 個行政區\n"
+        f"目前循環：第 {cycle_index} / {cycle_total} 輪\n"
+        f"目前行政區：第 {district_index} / {district_total} 區\n"
         f"本次行政區：**台北市 {district}**\n\n"
         f"{earthquake_text}\n\n"
         f"{weather_text}"
@@ -256,37 +268,74 @@ def build_status_message(district: str, index: int, total: int) -> str:
 # 主程式
 # ============================================================
 def main():
-    total = len(TAIPEI_DISTRICTS)
+    district_total = len(TAIPEI_DISTRICTS)
 
-    print("地震與台北天氣 Discord 自動通知系統已啟動。")
-    print("模式：台北市行政區輪巡")
-    print(f"行政區總數：{total}")
-    print(f"每次間隔：{CHECK_INTERVAL_SECONDS} 秒")
+    print("地震 + 台北天氣 Discord 自動通知系統已啟動。")
+    print("模式：整輪循環 + 行政區輪巡")
+    print(f"總循環次數：{MAX_CYCLES}")
+    print(f"行政區總數：{district_total}")
+    print(f"每個行政區間隔：{DISTRICT_INTERVAL_SECONDS} 秒")
+    print(f"每一整輪結束後等待：{CYCLE_INTERVAL_SECONDS} 秒")
     print(f"地震查詢範圍：台灣附近 {SEARCH_RADIUS_KM} 公里內")
     print(f"地震查詢時間：最近 {EARTHQUAKE_LOOKBACK_MINUTES} 分鐘")
     print("-" * 50)
 
-    for index, district in enumerate(TAIPEI_DISTRICTS, start=1):
-        print(f"第 {index} / {total} 次檢查")
-        print(f"目前查詢行政區：台北市 {district}")
+    for cycle_index in range(1, MAX_CYCLES + 1):
+        print(f"第 {cycle_index} / {MAX_CYCLES} 輪循環開始")
+        print("正在查詢本輪地震狀態...")
 
-        message = build_status_message(district, index, total)
+        earthquake_text = format_earthquake_message()
 
-        print(message)
-        print("-" * 50)
+        cycle_start_message = (
+            f"🔁 **第 {cycle_index} / {MAX_CYCLES} 輪循環開始**\n"
+            f"本輪會依序查詢台北市 {district_total} 個行政區。\n"
+            f"每個行政區間隔 {DISTRICT_INTERVAL_SECONDS} 秒。"
+        )
 
-        push_to_discord(message)
+        print(cycle_start_message)
+        push_to_discord(cycle_start_message)
 
-        if index < total:
-            print(f"等待 {CHECK_INTERVAL_SECONDS} 秒後查詢下一個行政區...")
-            time.sleep(CHECK_INTERVAL_SECONDS)
+        for district_index, district in enumerate(TAIPEI_DISTRICTS, start=1):
+            print(f"第 {cycle_index} 輪，第 {district_index} / {district_total} 區")
+            print(f"目前查詢行政區：台北市 {district}")
+
+            message = build_status_message(
+                district=district,
+                district_index=district_index,
+                district_total=district_total,
+                cycle_index=cycle_index,
+                cycle_total=MAX_CYCLES,
+                earthquake_text=earthquake_text
+            )
+
+            print(message)
+            print("-" * 50)
+
+            push_to_discord(message)
+
+            if district_index < district_total:
+                print(f"等待 {DISTRICT_INTERVAL_SECONDS} 秒後查詢下一個行政區...")
+                time.sleep(DISTRICT_INTERVAL_SECONDS)
+
+        cycle_end_message = (
+            f"✅ **第 {cycle_index} / {MAX_CYCLES} 輪循環完成**\n"
+            f"已完成台北市 {district_total} 個行政區的天氣與地震狀態通知。"
+        )
+
+        print(cycle_end_message)
+        push_to_discord(cycle_end_message)
+
+        if cycle_index < MAX_CYCLES:
+            print(f"等待 {CYCLE_INTERVAL_SECONDS} 秒後開始下一輪循環...")
+            time.sleep(CYCLE_INTERVAL_SECONDS)
 
     finish_time = datetime.now(TAIWAN_TZ).strftime("%Y-%m-%d %H:%M:%S")
 
     finish_message = (
-        "**台北市行政區輪巡完成**\n"
+        "🏁 **所有循環已完成**\n"
         f"完成時間：{finish_time}（台灣時間）\n"
-        f"本次已完成台北市 {total} 個行政區的天氣與地震狀態通知。"
+        f"本次總共完成 {MAX_CYCLES} 輪循環。\n"
+        f"每輪皆查詢地震狀態，並依序通知台北市 {district_total} 個行政區天氣。"
     )
 
     print(finish_message)
