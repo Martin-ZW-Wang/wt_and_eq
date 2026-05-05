@@ -246,6 +246,7 @@ def build_status_message(
         f"本次行政區：**台北市 {district}**\n\n"
         f"{earthquake_text}\n\n"
         f"{weather_text}"
+        f"-------------------------------------------------------"
     )
 
     return message
