@@ -11,7 +11,7 @@ on:
 jobs:
   notify:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
 
     steps:
       - name: Checkout repository
@@ -34,10 +34,49 @@ jobs:
           python -m pip install --upgrade pip
           pip install requests
 
+      - name: Check secrets
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          CWA_AUTHORIZATION: ${{ secrets.CWA_AUTHORIZATION }}
+        run: |
+          echo "檢查 GitHub Secrets 是否有成功傳入"
+
+          if [ -z "$DISCORD_WEBHOOK_URL" ]; then
+            echo "錯誤：DISCORD_WEBHOOK_URL 沒有讀到"
+            exit 1
+          else
+            echo "DISCORD_WEBHOOK_URL 有讀到"
+          fi
+
+          if [ -z "$CWA_AUTHORIZATION" ]; then
+            echo "錯誤：CWA_AUTHORIZATION 沒有讀到"
+            exit 1
+          else
+            echo "CWA_AUTHORIZATION 有讀到"
+          fi
+
+      - name: Check Python syntax
+        run: |
+          if [ -f "earthquake_notify.py" ]; then
+            echo "檢查根目錄 earthquake_notify.py 語法"
+            python -m py_compile earthquake_notify.py
+          elif [ -f ".github/workflows/earthquake_notify.py" ]; then
+            echo "檢查 .github/workflows/earthquake_notify.py 語法"
+            python -m py_compile .github/workflows/earthquake_notify.py
+          else
+            echo "錯誤：找不到 earthquake_notify.py"
+            echo "請確認檔案名稱是不是 earthquake_notify.py"
+            exit 1
+          fi
+
       - name: Run Python script
         env:
           PYTHONUNBUFFERED: "1"
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          CWA_AUTHORIZATION: ${{ secrets.CWA_AUTHORIZATION }}
         run: |
+          echo "開始執行 Python 程式"
+
           if [ -f "earthquake_notify.py" ]; then
             echo "找到根目錄 earthquake_notify.py"
             python earthquake_notify.py
@@ -45,7 +84,7 @@ jobs:
             echo "找到 .github/workflows/earthquake_notify.py"
             python .github/workflows/earthquake_notify.py
           else
-            echo "找不到 earthquake_notify.py"
+            echo "錯誤：找不到 earthquake_notify.py"
             echo "請確認檔案名稱是不是 earthquake_notify.py"
             exit 1
           fi
