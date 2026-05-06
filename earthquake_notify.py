@@ -207,7 +207,6 @@ def format_weather_message(district: str) -> tuple[str, str | None]:
         lines = [
             f"🌤️ **台北市 {district} 今日天氣狀態**",
             f"🖼️ **本次天氣圖片判斷：** {main_weather_text}"
-            f"------------------------------------------------------------------"
         ]
 
         for slot in slots:
@@ -329,7 +328,7 @@ def build_status_message(
 ) -> tuple[str, str | None]:
 
     now_text = datetime.now(TAIWAN_TZ).strftime("%Y-%m-%d %H:%M:%S")
-    weather_text, image_url = format_weather_message(district)
+    weather_text,  = format_weather_message(district)
 
     message = (
         f"📢 **地震與台北天氣自動通知**\n"
@@ -340,11 +339,10 @@ def build_status_message(
         f"{weather_text}\n"
     )
 
-    return message, image_url
+    return message, 
 # ============================================================
 # 主程式
 # ============================================================
-
 def main():
 
     district_total = len(TAIPEI_DISTRICTS)
@@ -370,7 +368,7 @@ def main():
         for district_index, district in enumerate(TAIPEI_DISTRICTS, start=1):
             print(f"目前查詢行政區：台北市 {district}")
 
-            message, image_url = build_status_message(
+            message,  = build_status_message(
                 district=district,
                 district_index=district_index,
                 district_total=district_total,
@@ -383,6 +381,7 @@ def main():
             print("-" * 50)
 
             push_to_discord(message, image_url)
+            print("-" * 50)
 
             if district_index < district_total:
                 print(f"等待 {DISTRICT_INTERVAL_SECONDS} 秒後查詢下一個行政區...")
