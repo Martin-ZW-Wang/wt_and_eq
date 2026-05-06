@@ -8,6 +8,7 @@ from zoneinfo import ZoneInfo
 # ============================================================
 DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL", "")
 CWA_AUTHORIZATION = os.getenv("CWA_AUTHORIZATION", "")
+
 CWA_TAIPEI_API_URL = "https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-D0047-063"
 USGS_API_URL = "https://earthquake.usgs.gov/fdsnws/event/1/query"
 
@@ -22,7 +23,7 @@ DISTRICT_INTERVAL_SECONDS = 5
 
 CYCLE_INTERVAL_SECONDS = 30
 
-MAX_CYCLES = 10000000000000
+MAX_CYCLES = 100
 
 TAIWAN_TZ = ZoneInfo("Asia/Taipei")
 
@@ -41,19 +42,98 @@ TAIPEI_DISTRICTS = [
     "文山區",
 ]
 # ============================================================
+# 天氣圖片設定
+# ============================================================
+WEATHER_IMAGE_URLS = {
+    "sunny": "https://openweathermap.org/img/wn/01d@4x.png",
+    "partly_cloudy": "https://openweathermap.org/img/wn/02d@4x.png",
+    "cloudy": "https://openweathermap.org/img/wn/03d@4x.png",
+    "overcast": "https://openweathermap.org/img/wn/04d@4x.png",
+    "shower": "https://openweathermap.org/img/wn/09d@4x.png",
+    "rain": "https://openweathermap.org/img/wn/10d@4x.png",
+    "thunder": "https://openweathermap.org/img/wn/11d@4x.png",
+    "snow": "https://openweathermap.org/img/wn/13d@4x.png",
+    "fog": "https://openweathermap.org/img/wn/50d@4x.png",
+}
+def get_weather_image_url(weather_text: str) -> str:
+
+    if not weather_text:
+        return WEATHER_IMAGE_URLS["partly_cloudy"]
+
+    if "雷" in weather_text:
+        return WEATHER_IMAGE_URLS["thunder"]
+
+    if "雪" in weather_text:
+        return WEATHER_IMAGE_URLS["snow"]
+
+    if "霧" in weather_text or "靄" in weather_text:
+        return WEATHER_IMAGE_URLS["fog"]
+
+    if "雨" in weather_text or "陣雨" in weather_text:
+        return WEATHER_IMAGE_URLS["rain"]
+
+    if "晴" in weather_text and ("雲" in weather_text or "陰" in weather_text):
+        return WEATHER_IMAGE_URLS["partly_cloudy"]
+
+    if "晴" in weather_text:
+        return WEATHER_IMAGE_URLS["sunny"]
+
+    if "多雲" in weather_text:
+        return WEATHER_IMAGE_URLS["cloudy"]
+
+    if "陰" in weather_text:
+        return WEATHER_IMAGE_URLS["overcast"]
+
+    return WEATHER_IMAGE_URLS["partly_cloudy"]
+def get_main_weather_text(slots: list[dict]) -> str:
+
+    now = datetime.now(TAIWAN_TZ)
+
+    for slot in slots:
+        try:
+            start_time = datetime.fromisoformat(slot["start"])
+            end_time = datetime.fromisoformat(slot["end"])
+
+            if start_time <= now <= end_time:
+                return slot["weather"]
+
+        except Exception:
+            continue
+
+    if slots:
+        return slots[0]["weather"]
+
+    return ""
+# ============================================================
 # Discord 發送函式
 # ============================================================
-def push_to_discord(message: str) -> None:
-    if DISCORD_WEBHOOK_URL == "請填入你的 Discord Webhook URL":
-        print("尚未設定 Discord Webhook URL，無法發送。")
+def push_to_discord(message: str, image_url: str | None = None) -> None:
+
+    if not DISCORD_WEBHOOK_URL:
+        print("尚未讀取到 DISCORD_WEBHOOK_URL，無法發送。")
+        return
+
+    if not DISCORD_WEBHOOK_URL.startswith("https://discord.com/api/webhooks/"):
+        print("Discord Webhook URL 格式不正確。")
         return
 
     payload = {
         "content": message
     }
 
+    if image_url:
+        payload["embeds"] = [
+            {
+                "image": {
+                    "url": image_url
+                }
+            }
+        ]
+
     try:
         response = requests.post(DISCORD_WEBHOOK_URL, json=payload, timeout=10)
+
+        print(f"Discord 回應狀態碼：{response.status_code}")
 
         if response.status_code in [200, 204]:
             print("Discord 訊息已送出。")
@@ -63,6 +143,7 @@ def push_to_discord(message: str) -> None:
 
     except requests.RequestException as error:
         print(f"Discord 發送錯誤：{error}")
+
 # ============================================================
 # 台北天氣 API
 # ============================================================
@@ -108,7 +189,8 @@ def parse_today_weather(elements: list) -> list[dict]:
         result.append(slot)
 
     return result
-def format_weather_message(district: str) -> str:
+def format_weather_message(district: str) -> tuple[str, str | None]:
+
     try:
         elements = fetch_taipei_weather(district)
         slots = parse_today_weather(elements)
@@ -116,11 +198,16 @@ def format_weather_message(district: str) -> str:
         if not slots:
             return (
                 f"🌤️ **台北市 {district} 天氣狀態**\n"
-                "目前沒有取得今天剩餘時段的天氣資料。"
+                "目前沒有取得今天剩餘時段的天氣資料。",
+                None
             )
 
+        main_weather_text = get_main_weather_text(slots)
+        image_url = get_weather_image_url(main_weather_text)
+
         lines = [
-            f"🌤️ **台北市 {district} 今日天氣狀態**"
+            f"🌤️ **台北市 {district} 今日天氣狀態**",
+            f"🖼️ **本次天氣圖片判斷：** {main_weather_text}"
         ]
 
         for slot in slots:
@@ -133,17 +220,19 @@ def format_weather_message(district: str) -> str:
                 f"降雨機率 {slot['rain_prob']}%"
             )
 
-        return "\n".join(lines)
+        return "\n".join(lines), image_url
 
     except Exception as error:
         return (
             f"🌤️ **台北市 {district} 天氣狀態**\n"
-            f"取得天氣資料失敗：{error}"
+            f"取得天氣資料失敗：{error}",
+            None
         )
 # ============================================================
 # 地震 API
 # ============================================================
 def fetch_earthquakes() -> list:
+
     now_utc = datetime.now(timezone.utc)
     start_time = now_utc - timedelta(minutes=EARTHQUAKE_LOOKBACK_MINUTES)
 
@@ -164,6 +253,7 @@ def fetch_earthquakes() -> list:
 
     return data.get("features", [])
 def format_earthquake_event(event: dict) -> str:
+
     properties = event.get("properties", {})
     geometry = event.get("geometry", {})
     coordinates = geometry.get("coordinates", [None, None, None])
@@ -195,6 +285,7 @@ def format_earthquake_event(event: dict) -> str:
         f"詳細資料：{detail_url}"
     )
 def format_earthquake_message() -> str:
+
     try:
         earthquakes = fetch_earthquakes()
 
@@ -235,9 +326,10 @@ def build_status_message(
         cycle_index: int,
         cycle_total: int,
         earthquake_text: str
-) -> str:
+) -> tuple[str, str | None]:
+
     now_text = datetime.now(TAIWAN_TZ).strftime("%Y-%m-%d %H:%M:%S")
-    weather_text = format_weather_message(district)
+    weather_text, image_url = format_weather_message(district)
 
     message = (
         f"📢 **地震與台北天氣自動通知**\n"
@@ -249,11 +341,13 @@ def build_status_message(
         f"------------------------------------------------------------------"
     )
 
-    return message
+    return message, image_url
 # ============================================================
 # 主程式
 # ============================================================
+
 def main():
+
     district_total = len(TAIPEI_DISTRICTS)
 
     print("地震與台北天氣 Discord 自動通知系統已啟動。")
@@ -277,7 +371,7 @@ def main():
         for district_index, district in enumerate(TAIPEI_DISTRICTS, start=1):
             print(f"目前查詢行政區：台北市 {district}")
 
-            message = build_status_message(
+            message, image_url = build_status_message(
                 district=district,
                 district_index=district_index,
                 district_total=district_total,
@@ -289,7 +383,7 @@ def main():
             print(message)
             print("-" * 50)
 
-            push_to_discord(message)
+            push_to_discord(message, image_url)
 
             if district_index < district_total:
                 print(f"等待 {DISTRICT_INTERVAL_SECONDS} 秒後查詢下一個行政區...")
