@@ -337,6 +337,7 @@ def build_status_message(
         f"本次行政區：**台北市 {district}**\n\n"
         f"{earthquake_text}\n\n"
         f"{weather_text}\n"
+        f"\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     )
 
     return message, 
@@ -381,7 +382,6 @@ def main():
             print("-" * 50)
 
             push_to_discord(message, image_url)
-            print("-" * 50)
 
             if district_index < district_total:
                 print(f"等待 {DISTRICT_INTERVAL_SECONDS} 秒後查詢下一個行政區...")
