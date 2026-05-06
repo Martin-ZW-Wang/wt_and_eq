@@ -24,8 +24,6 @@ on:
   #
   # schedule:
   #   - cron: "0 13 * * *"
-  schedule:
-  - cron: "45 10 * * *"
 
 jobs:
   notify:
