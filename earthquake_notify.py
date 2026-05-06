@@ -143,7 +143,6 @@ def push_to_discord(message: str, image_url: str | None = None) -> None:
 
     except requests.RequestException as error:
         print(f"Discord 發送錯誤：{error}")
-
 # ============================================================
 # 台北天氣 API
 # ============================================================
@@ -208,6 +207,7 @@ def format_weather_message(district: str) -> tuple[str, str | None]:
         lines = [
             f"🌤️ **台北市 {district} 今日天氣狀態**",
             f"🖼️ **本次天氣圖片判斷：** {main_weather_text}"
+            f"------------------------------------------------------------------"
         ]
 
         for slot in slots:
@@ -338,7 +338,6 @@ def build_status_message(
         f"本次行政區：**台北市 {district}**\n\n"
         f"{earthquake_text}\n\n"
         f"{weather_text}\n"
-        f"------------------------------------------------------------------"
     )
 
     return message, image_url
