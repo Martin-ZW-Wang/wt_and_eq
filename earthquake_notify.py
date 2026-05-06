@@ -328,7 +328,7 @@ def build_status_message(
 ) -> tuple[str, str | None]:
 
     now_text = datetime.now(TAIWAN_TZ).strftime("%Y-%m-%d %H:%M:%S")
-    weather_text,  = format_weather_message(district)
+    weather_text, image_url = format_weather_message(district)
 
     message = (
         f"📢 **地震與台北天氣自動通知**\n"
@@ -340,7 +340,7 @@ def build_status_message(
         f"\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     )
 
-    return message, 
+    return message, image_url
 # ============================================================
 # 主程式
 # ============================================================
@@ -369,7 +369,7 @@ def main():
         for district_index, district in enumerate(TAIPEI_DISTRICTS, start=1):
             print(f"目前查詢行政區：台北市 {district}")
 
-            message,  = build_status_message(
+            message, image_url  = build_status_message(
                 district=district,
                 district_index=district_index,
                 district_total=district_total,
